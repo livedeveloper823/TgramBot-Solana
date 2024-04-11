@@ -1,0 +1,160 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "mysql"
+    url      = env("DATABASE_URL")
+}
+
+// schema.prisma
+model Income {
+    id       Int    @id @default(autoincrement())
+    userId   String
+    senderId String
+    referral Float?
+    lucky    Float?
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@map("incomes")
+}
+
+// Define the User table
+model User {
+  id          String     @id
+  referrerId  String?    // This assumes referrerId is a nullable string
+  username    String?    // This assumes username is a nullable string
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  referrer    User?      @relation("Referrer", fields: [referrerId], references: [id])
+  referrals   User[]     @relation("Referrer")
+  Strategy    Strategy[]
+  Trade       Trade[]
+  CopyTrade   CopyTrade[]
+  UserChannel UserChannel[]
+  position   position[] // Add this line to define the opposite relation
+  @@map("users") // Maps this model to the 'users' table in your database
+}
+
+model Wallet {
+    id        String @id
+    publicKey String
+    secretKey String
+    address   String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@map("wallets")
+}
+
+model Settings {
+    id               String  @id
+    minPosValue      Float   @default(0.001)
+    autoBuy          Boolean @default(false)
+    autoBuyAmount    Float   @default(0.1)
+    autoSell         Boolean @default(false)
+    autoSellAmount   Int     @default(50)
+    leftBuyAmount    Float   @default(1.0)
+    rightBuyAmount   Float   @default(5.0)
+    leftSellAmount   Float   @default(25)
+    rightSellAmount  Float   @default(100)
+    buySlippage      Float   @default(20)
+    sellSlippage     Float   @default(20)
+    autoBuySlippage  Float   @default(20)
+    autoSellSlippage Float   @default(20)
+    gasFee           Float   @default(0.0005)
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@map("settings")
+}
+
+model Strategy {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  percent   Float
+  amount    Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id])
+  trades Trade[] // Removed references argument
+
+  @@map("strategies")
+
+}
+
+model Trade {
+  id         Int      @id @default(autoincrement())
+  userId     String
+  inputMint  String
+  inAmount   Float
+  outputMint String
+  outAmount  Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id])
+  strategies Strategy[] // Removed references argument
+
+  @@map("trades")
+}
+
+model StrategyTrade {
+  strategyId Int @map("strategy_id")
+  tradeId    Int @map("trade_id")
+
+  @@id([strategyId, tradeId])
+  @@map("strategy_trade")
+}
+
+model CopyTrade {
+    id                Int    @id @default(autoincrement())
+    copyWalletAddress String
+    amount            Float
+    userId            String
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    user User @relation(fields: [userId], references: [id])
+
+    @@map("copy_trade")
+}
+model channels {
+  id         Int      @id @default(autoincrement())
+  name       String
+  codename   String
+  
+  UserChannel UserChannel[]
+}
+
+// Define the `UserChannel` model for the many-to-many relationship
+model UserChannel {
+  user      User     @relation(fields: [user_id], references: [id])
+  user_id    String      // Foreign key reference to `User`
+  channel   channels  @relation(fields: [channel_id], references: [id])
+  channel_id Int         // Foreign key reference to `Channel`
+  amount    Decimal?     // Optional Decimal field for amount, make it non-optional by removing '?'
+  @@id([user_id, channel_id])
+  @@map("user_channel")
+}
+model position {
+  id           Int       @id @default(autoincrement())
+  userId       String    // Foreign key referencing User.id
+  tokenAddress String
+  initial      Float
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  
+  // Define the relationship to the User table
+  user         User      @relation(fields: [userId], references: [id])
+  
+  @@map("position") // Maps this model to the 'new_table' table in your database
+}
